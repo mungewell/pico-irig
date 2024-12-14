@@ -7,12 +7,11 @@ Sister project to 'pico-timecode' (1) which uses the PIO blocks of the Pico to g
 SMPTE timecode with minimal hardware.
 
 The intent is to produce valid (and well synchronized) timecode from a GPSDO, using the 
-NMEA/1PPS to derive true time, whilst using the 10MHz clock to also clock the Pico. In 
-theory this will ensure that the timecode is kept in sync, without complicated calibration
-processes/software.
+NMEA/1PPS to derive true time, whilst using the 10MHz clock to also clock the Pico.
 
-For simpler applications time can be sync'ed with RTC with 1PPS output, the DS3231 for 
-example.
+In theory this will ensure that the timecode is kept in sync, without complicated 
+calibration processes/software. For simpler applications time can be sync'ed with 
+RTC with 1PPS output, the DS3231 for example.
 
 1 - https://github.com/mungewell/pico-timecode
 
@@ -113,14 +112,13 @@ Obviously the desire for a stable/precision clock output depends on how the Pico
 is clocked itself. For best precision the Pico should be clocked from the 10MHz
 GPSDO, with the the 1PPS output triggering the state machine to start.
 
-We change the CPU clock to 120MHz and the individual state machine are (mostly) 
-clocked from 12KHz, this gives an interger divider to reduce jitter.
-
-The exception to this is the Synchroiser, which needs to be clocked at 10MHz as 
+We change the CPU clock to 120MHz and the individual state machine(s) are (mostly) 
+clocked from 12KHz, this gives an interger divider (to reduce jitter). The 
+exception to this is the Synchroniser, which needs to be clocked at 10MHz as 
 the 1PPS from the GPSDO is likely only a single 10MHz clock period.
 
-The Pico offers the ability to synchronise the clock dividers, so that they start
-counting at the same time.
+The Pico offers the ability to align the clock dividers, so that they start
+counting at the __same instant__.
 
 _Not implemented yet, but the plan is to use a 'first stage' synchroniser at 
 full CPU clock rate, and re-align the clock dividers to the very moment that 
@@ -128,13 +126,12 @@ full CPU clock rate, and re-align the clock dividers to the very moment that
 1PPS occurance._
 
 I chose to use 12KHz (or 120KHz for IRIG-A) as this matches nicely with the 
-Modulator use of 'side set' (which limits the code's additional 'delay' macro)
+Modulator use of 'side set' (which limits the code's 'additional delay' macro)
 whilst still resulting in workable code length. The PIO code space is actually
-100% full....
+__100%__ full....
 
 12KHz, 120KHz, and 120MHz also all work nicely if/when the stock XTAL (12MHz) is
 replaced with 10MHz, and the CPUs SYS-Clk PLL can be adjusted:
-
 ```
 $ python3 vcocalc.py --input 10 120
 Requested: 120.0 MHz
