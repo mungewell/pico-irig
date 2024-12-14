@@ -60,7 +60,7 @@ the markers, and once the 11th ('P0') is output it clears the ISR so that the
 coding to loading the next FIFO block is easier.
 
 The duration of the FIFO state machine's code is 1 'frame', which is 100 'symbols' 
-or 1200 clock periods.
+or 1200 SM clock periods.
 
 ## Encoder
 
@@ -74,7 +74,7 @@ ratio of high to low time:
 The Encoder state machine monitors the outputs from the FIFO, and uses these to
 produce the modulation.
 
-The duration of the Encoder state machine's code is one 'symbol', ie 12 clock periods.
+The duration of the Encoder state machine's code is one 'symbol', ie 12 SM clock periods.
 
 ## Modulator
 
@@ -83,9 +83,9 @@ is modulated with high and low amplitudes, directly relating to the output of
 the modulator.
 
 This runs synchronised with the encoder, and (ab)uses the pull-up/down resistors
-of the PIO GPIO output to produce intermediate values/analogue voltages.
+of the GPIO outputs to produce intermediate values/analogue voltages.
 
-The duration of the Modulator state machine's code is one 'symbol', ie 12 clock periods.
+The duration of the Modulator state machine's code is one 'symbol', ie 12 SM clock periods.
 
 # The 'analogue' output
 
@@ -93,17 +93,57 @@ The Pico __does not__ have an analogue output, one which can be programmed to va
 voltages - as would normally be used for generating a sine wave. Some advanced 
 projects would include a DAC IC or implemented with a resistor ladder.
 
-Instead this project (ab)uses two digital GPIOs to _fake_ one. By using the two 
-GPIOs __either__ as outputs (driving 0V or 3.3V) or as inputs (with pull up or 
-pull down resistors), we can render intermediate levels.
+Instead this project (ab)uses two digital GPIOs to _fake_ one. 
 
-Two series resistors are connected to the two outputs, and the center point is 
-connected to a buffer.
+By using the two GPIOs __either__ as outputs (driving 0V or 3.3V) or as inputs (with 
+pull up or pull down resistors), we can render intermediate levels. Two series resistors 
+are connected between the two outputs, and the center point is connected to a buffer.
 
 The value of the resistors set the amplitude of the 'low' sine, the absolute 
 value is not too critcal and 33K seems to be OK. _The values of the internal
-pull-up/pull-down resistors can vary a lot too._
+pull-up/pull-down resistors can vary between 50K and 80K._
 
 Note: we could use a square wave and filter it down to a sine, but a square wave
 contains a lot of harmonics (with 3rd being around -12dB). Using this 'modified 
-square' output reduces the harmonics (with 3rd being around -XXdB).
+square' output reduces the harmonics (with 3rd being around -30dB).
+
+# Clocking
+
+Obviously the desire for a stable/precision clock output depends on how the Pico
+is clocked itself. For best precision the Pico should be clocked from the 10MHz
+GPSDO, with the the 1PPS output triggering the state machine to start.
+
+We change the CPU clock to 120MHz and the individual state machine are (mostly) 
+clocked from 12KHz, this gives an interger divider to reduce jitter.
+
+The exception to this is the Synchroiser, which needs to be clocked at 10MHz as 
+the 1PPS from the GPSDO is likely only a single 10MHz clock period.
+
+The Pico offers the ability to synchronise the clock dividers, so that they start
+counting at the same time.
+
+_Not implemented yet, but the plan is to use a 'first stage' synchroniser at 
+full CPU clock rate, and re-align the clock dividers to the very moment that 
+1PPS changes... the normal state machines would then be run on the following 
+1PPS occurance._
+
+I chose to use 12KHz (or 120KHz for IRIG-A) as this matches nicely with the 
+Modulator use of 'side set' (which limits the code's additional 'delay' macro)
+whilst still resulting in workable code length. The PIO code space is actually
+100% full....
+
+12KHz, 120KHz, and 120MHz also all work nicely if/when the stock XTAL (12MHz) is
+replaced with 10MHz, and the CPUs SYS-Clk PLL can be adjusted:
+
+```
+$ python3 vcocalc.py --input 10 120
+Requested: 120.0 MHz
+Achieved: 120.0 MHz
+REFDIV: 1
+FBDIV: 144 (VCO = 1440.0 MHz)
+PD1: 6
+PD2: 2
+```
+
+Note: Custom 'micropython.uf2' can be loaded to ensure USB and UART work at 
+the correct speed(s).
