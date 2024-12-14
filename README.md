@@ -29,12 +29,17 @@ The four parts are:
 * Encoder
 * Modulator
 
-## Synchronisation
+## Synchroniser
 
 We ultimately want the output to be synchronised with another clock, for this we 
-use the 1PPS input. This is used to trigger the other StateMachine to start from 
+use the 1PPS input.
+
+This is used to trigger the other state machine to start from 
 a know point in code at the correct time, via them waiting with `irq(block, 4)`
 and the synchroniser clearing the interrupt at the right time with `irq(clear, 4)`.
+
+_The Synchroniser is 'one and done', but I may let it continue to run so that
+the timing of the interrupts can be monitored by the CPU._
 
 ## FIFO
 
@@ -66,10 +71,10 @@ ratio of high to low time:
 * data-1: 50$ high, 50% low
 * marker: 80% high, 20% low
 
-The encoder state machine monitors the outputs from the FIFO, and uses these to
+The Encoder state machine monitors the outputs from the FIFO, and uses these to
 produce the modulation.
 
-The duration of the state machine's code is one 'symbol', ie 12 clock periods.
+The duration of the Encoder state machine's code is one 'symbol', ie 12 clock periods.
 
 ## Modulator
 
@@ -80,4 +85,25 @@ the modulator.
 This runs synchronised with the encoder, and (ab)uses the pull-up/down resistors
 of the PIO GPIO output to produce intermediate values/analogue voltages.
 
-The duration of the state machine's code is one 'symbol', ie 12 clock periods.
+The duration of the Modulator state machine's code is one 'symbol', ie 12 clock periods.
+
+# The 'analogue' output
+
+The Pico __does not__ have an analogue output, one which can be programmed to varying
+voltages - as would normally be used for generating a sine wave. Some advanced 
+projects would include a DAC IC or implemented with a resistor ladder.
+
+Instead this project (ab)uses two digital GPIOs to _fake_ one. By using the two 
+GPIOs __either__ as outputs (driving 0V or 3.3V) or as inputs (with pull up or 
+pull down resistors), we can render intermediate levels.
+
+Two series resistors are connected to the two outputs, and the center point is 
+connected to a buffer.
+
+The value of the resistors set the amplitude of the 'low' sine, the absolute 
+value is not too critcal and 33K seems to be OK. _The values of the internal
+pull-up/pull-down resistors can vary a lot too._
+
+Note: we could use a square wave and filter it down to a sine, but a square wave
+contains a lot of harmonics (with 3rd being around -12dB). Using this 'modified 
+square' output reduces the harmonics (with 3rd being around -XXdB).
