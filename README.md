@@ -10,8 +10,10 @@ The intent is to produce valid (and well synchronized) timecode from a GPSDO, us
 NMEA/1PPS to derive true time, whilst using the 10MHz clock to also clock the Pico.
 
 In theory this will ensure that the timecode is kept in sync, without complicated 
-calibration processes/software. For simpler applications time can be sync'ed with 
-RTC with 1PPS output, the DS3231 for example.
+calibration processes/software. 
+
+For simpler implementations IRIG can be sync'ed with RTC with 1PPS output, the DS3231 
+for example.
 
 1 - https://github.com/mungewell/pico-timecode
 
@@ -19,8 +21,10 @@ RTC with 1PPS output, the DS3231 for example.
 
 As mentioned above the project leans on the PIO blocks to perform most functions of
 the project, since these are much simpler processors their behaviour is much more
-deterministic than the main CPU. _Rather, it's easier to write small chunks of code
-which are not affected by all the things that make the CPU un-deterministic..._
+deterministic than the main CPU. 
+
+_Rather, it's easier to write small chunks of code which are not affected by all 
+the things that make the CPU un-deterministic..._
 
 The four parts are:
 * Synchronisation
@@ -33,7 +37,7 @@ The four parts are:
 We ultimately want the output to be synchronised with another clock, for this we 
 use the 1PPS input.
 
-This is used to trigger the other state machine to start from 
+This 1PPS input is used to trigger the other state machine to start from 
 a know point in code at the correct time, via them waiting with `irq(block, 4)`
 and the synchroniser clearing the interrupt at the right time with `irq(clear, 4)`.
 
@@ -43,14 +47,14 @@ the timing of the interrupts can be monitored by the CPU._
 ## FIFO
 
 This is really the heart of the project. The output IRIG stream is encoded as 100
-bits (symbols) of information; containing the time value, some other data and a
-some markers allowing a partner device to align with stream.
+bits (symbols); containing the time value, some other information and additional
+markers allowing a partner device to align with stream.
 
 For IRIG-B this 'frame' is 1s in duration, for IRIG-A it is 100ms.
 
 The values (and positions) for the 'data' and the 'markers' are __pre-computed__
-by the CPU, and each 'frame' is pushed into a FIFO for the state machine to
-use. The FIFO uses bit-pairs, where the upper bit encodes the markters ('Px', 
+by the CPU, and each 'frame' is pushed into the FIFO for the state machine to
+use. The FIFO uses bit-pairs, where the upper bit encodes the markers ('Px', 
 'P1..P9' and 'P0' at the end) and the lower bit encodes the data.
 
 Each 'frame' starts with 'Pr' marker... the FIFO loads the bit-pair and places
@@ -59,7 +63,7 @@ the markers, and once the 11th ('P0') is output it clears the ISR so that the
 coding to loading the next FIFO block is easier.
 
 The duration of the FIFO state machine's code is 1 'frame', which is 100 'symbols' 
-or 1200 SM clock periods.
+or 1200 SM-clock periods.
 
 ## Encoder
 
@@ -73,7 +77,7 @@ ratio of high to low time:
 The Encoder state machine monitors the outputs from the FIFO, and uses these to
 produce the modulation.
 
-The duration of the Encoder state machine's code is one 'symbol', ie 12 SM clock periods.
+The duration of the Encoder state machine's code is one 'symbol', ie 12 SM-clock periods.
 
 ## Modulator
 
@@ -84,7 +88,7 @@ the modulator.
 This runs synchronised with the encoder, and (ab)uses the pull-up/down resistors
 of the GPIO outputs to produce intermediate values/analogue voltages.
 
-The duration of the Modulator state machine's code is one 'symbol', ie 12 SM clock periods.
+The duration of the Modulator state machine's code is one 'symbol', ie 12 SM-clock periods.
 
 # The 'analogue' output
 
@@ -142,5 +146,5 @@ PD1: 6
 PD2: 2
 ```
 
-Note: Custom 'micropython.uf2' can be loaded to ensure USB and UART work at 
-the correct speed(s).
+Note: Custom 10MHz 'micropython.uf2' can be loaded to ensure USB and UART 
+function at the correct speed(s).
