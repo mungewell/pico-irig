@@ -145,6 +145,14 @@ def irig_fifo():
     jmp("fail")
 
 
+@rp2.asm_pio(out_init=[rp2.PIO.OUT_HIGH])
+
+def irig_dcls():
+    wrap_target()
+    mov(pins, pins)
+    wrap()
+
+
 @rp2.asm_pio(set_init=[rp2.PIO.OUT_HIGH])
 
 def irig_enc():
@@ -400,6 +408,8 @@ if __name__ == "__main__":
     fifo_sm = len(irig_sm)
     irig_sm.append(rp2.StateMachine(2, irig_fifo, freq=irig_freq, \
                         out_base=Pin(3), jmp_pin=Pin(4)))
+    irig_sm.append(rp2.StateMachine(3, irig_dcls, freq=irig_freq, \
+                        in_base=Pin(5), out_base=Pin(6)))
 
     # On PIO Block-2
     if irig_polarity == IRIG_PPS_RISING:
