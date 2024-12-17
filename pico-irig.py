@@ -9,8 +9,8 @@ alloc_emergency_exception_buf(100)
 from libs.ds3231 import DS3231
 
 # Clock speeds
-irig_freq = 12000		# For IRIG-B
-#irig_freq = 120000		# For IRIG-A
+irig_freq = 1000		# 1KHz modulation for IRIG-B
+#irig_freq = 10000		# 10KHz modulation for IRIG-A
 ext_freq = 10000000     # ie when 1PPS is 1 period of 10MHz
 cpu_freq = 120000000
 
@@ -227,7 +227,6 @@ def sync_sm(r0, r1):
     str(r2, [r0, 0])
     str(r2, [r1, 0])
 
-
 def irq_handler(m):
     global core_dis, stop, irig_sm, fifo
     global sync_ticks_us, pps_ticks_us
@@ -406,9 +405,9 @@ if __name__ == "__main__":
         irig_sm.append(rp2.StateMachine(1, start_from_pin_falling, freq=cpu_freq, \
                             in_base=Pin(18), jmp_pin=Pin(18)))
     fifo_sm = len(irig_sm)
-    irig_sm.append(rp2.StateMachine(2, irig_fifo, freq=irig_freq, \
+    irig_sm.append(rp2.StateMachine(2, irig_fifo, freq=irig_freq * 12, \
                         out_base=Pin(3), jmp_pin=Pin(4)))
-    irig_sm.append(rp2.StateMachine(3, irig_dcls, freq=irig_freq, \
+    irig_sm.append(rp2.StateMachine(3, irig_dcls, freq=irig_freq * 12, \
                         in_base=Pin(5), out_base=Pin(6)))
 
     # On PIO Block-2
@@ -418,10 +417,10 @@ if __name__ == "__main__":
     else:
         irig_sm.append(rp2.StateMachine(4, start_from_pin_falling, freq=ext_freq, \
                             in_base=Pin(18), jmp_pin=Pin(18)))
-    irig_sm.append(rp2.StateMachine(5, irig_enc, freq=irig_freq, \
+    irig_sm.append(rp2.StateMachine(5, irig_enc, freq=irig_freq * 12, \
                         set_base=Pin(5), in_base=Pin(3), \
                         jmp_pin=Pin(4)))
-    irig_sm.append(rp2.StateMachine(6, irig_ask, freq=irig_freq, \
+    irig_sm.append(rp2.StateMachine(6, irig_ask, freq=irig_freq * 12, \
                         sideset_base=Pin(0), set_base=Pin(0), \
                         jmp_pin=Pin(5)))
 
@@ -448,7 +447,7 @@ if __name__ == "__main__":
         pack_from_seconds(irig_seconds)
         for p in irig_fifo:
             irig_sm[fifo_sm].put(p)
-        irig_seconds += (12000 / irig_freq)
+        irig_seconds += (1000 / irig_freq)
 
     print("State Machines armed, start scope now :-)")
     utime.sleep(5)
@@ -491,7 +490,7 @@ if __name__ == "__main__":
     while not fail:
         if irig_sm[fifo_sm].tx_fifo() < 1:
             pack_from_seconds(irig_seconds)
-            irig_seconds += (12000 / irig_freq)
+            irig_seconds += (1000 / irig_freq)
             '''
             pack_test(count)
             count = (count + 1) & 0xFF
