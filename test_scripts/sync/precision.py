@@ -6,7 +6,7 @@
 # Example script for a 'precision trigger', starting a 12KHz clocked
 # StateMachine from a trigger pin with ~16ns accuracy.
 #
-# This example just 'toggles a pin', but can be adjust for more
+# This example just 'toggles a pin', but can be adjusted for more
 # complicated purposes.
 #
 # MIT license - go make something cool....
@@ -228,10 +228,16 @@ def precision_handler(r0):
     # --
     # embedded table with constants
     align   (4)
-    data    (4, 0x00000407)     #  0 - Align Dividers for SM2 and Enable SM2/1/0
-    data    (4, 0x50200000)     #  4 - Bank 1 - CTRL Register
-    data    (4, 0x502000cc)     #  8 - Bank 1 - SM0_EXECCTRL, +8 for SM0_ADDR (ie 'counter')
-    data    (4, 0x502000e4)     #  C - Bank 1 - SM1_EXECCTRL, +8 for SM1_ADDR (ie 'phase')
+    data    (4, 0x502000cc)     #  0x00 - Bank 1 - SM0_EXECCTRL, +8 for SM0_ADDR (ie 'counter')
+    data    (4, 0x502000e4)     #  0x04 - Bank 1 - SM1_EXECCTRL, +8 for SM1_ADDR (ie 'phase')
+
+    # trigger 1
+    data    (4, 0x50300000)     #  0x08 - Bank 2 - CTRL Register
+    data    (4, 0x00000101)     #  0x0C - Align Dividers for SM4 and Enable SM4
+
+    # trigger 2 - optional
+    data    (4, 0x50400000)     #  0x10 - Bank 3 - CTRL Register - ie RP2350 only
+    data    (4, 0x00000F0F)     #  0x14 - Align Dividers for all and Enable SM11/10/9/8
 
     align   (2)
     # --
@@ -253,7 +259,7 @@ def precision_handler(r0):
     label   (func_entry)
 
     # checking SM-1 Address (ie Phase)
-    ldr     (r1, [r7, 0xc])     # loads 0x502000e4 into r1
+    ldr     (r1, [r7, 0x04])    # loads 0x502000e4 into r1
     ldr     (r3, [r1, 0])       # value from 0x502000e4=SM1_EXECCTRL into r3
     mov     (r0, 12)
     lsr     (r3, r0)
@@ -278,7 +284,7 @@ def precision_handler(r0):
 
     # --
     # checking SM-0 Address (ie Counter)
-    ldr     (r1, [r7, 0x8])     # loads 0x502000cc into r1
+    ldr     (r1, [r7, 0x00])    # loads 0x502000cc into r1
     ldr     (r5, [r1, 0])       # value from 0x502000cc=SM1_EXECCTRL into r5
     mov     (r3, 7)
     lsr     (r5, r3)
@@ -327,10 +333,13 @@ def precision_handler(r0):
     # --
     label   (aligned)
 
-    ldr     (r5, [r7, 0])       # loads 0x00000407 into r5
-    ldr     (r6, [r7, 4])       # loads 0x50200000 into r6
-    nop     ()                  # spare/delay
-    nop     ()                  # spare/delay
+    # pre-load trigger 1 values
+    ldr     (r3, [r7, 0x08])    # loads 0x50300000 into r3
+    ldr     (r4, [r7, 0x0C])    # loads 0x00000101 into r4
+    # pre-load trigger 2 values
+    ldr     (r5, [r7, 0x10])    # loads 0x50400000 into r5
+    ldr     (r6, [r7, 0x14])    # loads 0x00000F0F into r6
+
     #nop     ()                  # spare/delay
     #nop     ()                  # spare/delay
 
@@ -352,7 +361,8 @@ def precision_handler(r0):
     nop     ()
     nop     ()
     nop     ()
-    str     (r5, [r6, 0])       # Reset SM-2's DivClock and start it
+    str     (r4, [r3, 0])       # Trig-1: Reset SM4's DivClock and start it
+    #str     (r6, [r5, 0])       # Trig-2: Reset SM11/10/9/8 and start them
 
     # --
     label   (abort)
@@ -408,7 +418,7 @@ if __name__ == "__main__":
                             set_base=Pin(7), sideset_base=Pin(7),\
                             in_base=Pin(18), jmp_pin=Pin(4)))
 
-    irig_sm.append(rp2.StateMachine(2, toggle_pin, freq=12_000, \
+    irig_sm.append(rp2.StateMachine(4, toggle_pin, freq=12_000, \
                             set_base=Pin(6), in_base=Pin(6), out_base=Pin(6)))
 
     '''
@@ -449,17 +459,17 @@ if __name__ == "__main__":
         utime.sleep(0.1)
         #print("0x%8.8x" % mem32[0x50200000])
 
-        if (mem32[0x50200000] & (1 << 2)):
-            print("SM-2 has started")#, ret =", ret)
+        if (mem32[0x50300000] & (1 << 0)):
+            print("SM-4 has started")#, ret =", ret)
 
             # Stop SM-0 & SM-1
-            mem32[0x50200000] = 0x00000004
+            mem32[0x50200000] = 0x00000000
             break
 
         print("try, try again...")#0x%8.8x"% ret)
 
-        # stop SM-2 and loop to trigger again
-        mem32[0x50200000] = 0x00000003
+        # stop SM-4 and loop to trigger again
+        mem32[0x50300000] = 0x00000000
         ret = 0
 
     
