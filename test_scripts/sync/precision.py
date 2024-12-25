@@ -179,14 +179,14 @@ def start_from_pin_falling():
 
     label("minus_13")
     jmp(pin, "minus_13") .side(0)
-    label("minus_12")
+    label("minus_12")                   # earliest seen
     jmp(pin, "minus_12") .side(1)
     label("minus_11")
     jmp(pin, "minus_11") .side(0)
     label("minus_10")
     jmp(pin, "minus_10") .side(1)
     label("minus_9")
-    jmp(pin, "minus_9") .side(0)        # <--- nominal
+    jmp(pin, "minus_9") .side(0)
     label("minus_8")
     jmp(pin, "minus_8") .side(1)
     label("minus_7")
@@ -197,7 +197,7 @@ def start_from_pin_falling():
     jmp(pin, "minus_5") .side(0)
     label("minus_4")
     jmp(pin, "minus_4") .side(1)
-    label("minus_3")
+    label("minus_3")                    # latest seen
     jmp(pin, "minus_3") .side(0)
     label("minus_2")
     jmp(pin, "minus_2") .side(1)
