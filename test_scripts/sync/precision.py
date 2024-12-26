@@ -13,6 +13,7 @@
     
 import rp2
 import utime
+from random import random
 from machine import Pin, disable_irq, enable_irq, mem32, freq, I2C
 
 from micropython import schedule, alloc_emergency_exception_buf
@@ -123,40 +124,32 @@ def start_from_pin_rising():
     wait(0, pin, 0) .side(0)
     wait(1, pin, 0)
 
-    irq(clear, 4) .side(1)          # Trigger SM-0
-    irq(rel(0)) [2]
+    irq(clear, 4) .side(1) [3]          # Trigger SM-0
+    irq(rel(0))
 
     # will stick at this 'address' depending
     # on when exactly the Sync occurs
 
-    label("minus_13")
-    jmp(pin, "minus_13") .side(0)
-    label("minus_12")
-    jmp(pin, "minus_12") .side(1)
-    label("minus_11")
-    jmp(pin, "minus_11") .side(0)
-    label("minus_10")
-    jmp(pin, "minus_10") .side(1)
-    label("minus_9")
-    jmp(pin, "minus_9") .side(0)        # <--- nominal
-    label("minus_8")
-    jmp(pin, "minus_8") .side(1)
-    label("minus_7")
-    jmp(pin, "minus_7") .side(0)
-    label("minus_6")
-    jmp(pin, "minus_6") .side(1)
-    label("minus_5")
-    jmp(pin, "minus_5") .side(0)
-    label("minus_4")
-    jmp(pin, "minus_4") .side(1)
-    label("minus_3")
-    jmp(pin, "minus_3") .side(0)
-    label("minus_2")
-    jmp(pin, "minus_2") .side(1)
-    label("minus_1")
-    jmp(pin, "minus_1") .side(0)
-    label("zero")                 
-    jmp(pin, "zero")    .side(1)        # address = 'top'
+    label("phase_0")
+    jmp(pin, "phase_0") .side(0)        # earliest seen = 'top-9'
+    label("phase_1")
+    jmp(pin, "phase_1") .side(1)
+    label("phase_2")
+    jmp(pin, "phase_2") .side(0)
+    label("phase_3")
+    jmp(pin, "phase_3") .side(1)
+    label("phase_4")
+    jmp(pin, "phase_4") .side(0)
+    label("phase_5")
+    jmp(pin, "phase_5") .side(1)
+    label("phase_6")
+    jmp(pin, "phase_6") .side(0)
+    label("phase_7")
+    jmp(pin, "phase_7") .side(1)
+    label("phase_8")
+    jmp(pin, "phase_8") .side(0)
+    label("phase_9")
+    jmp(pin, "phase_9") .side(1)        # latest seen = 'top'
 
     wrap()
 
@@ -171,40 +164,32 @@ def start_from_pin_falling():
     wait(1, pin, 0) .side(0)
     wait(0, pin, 0)
 
-    irq(clear, 4) .side(1)          # Trigger SM-0
-    irq(rel(0)) [2]
+    irq(clear, 4) .side(1) [3]          # Trigger SM-0
+    irq(rel(0))
 
     # will stick at this 'address' depending
     # on when exactly the Sync occurs
 
-    label("minus_13")
-    jmp(pin, "minus_13") .side(0)
-    label("minus_12")                   # earliest seen
-    jmp(pin, "minus_12") .side(1)
-    label("minus_11")
-    jmp(pin, "minus_11") .side(0)
-    label("minus_10")
-    jmp(pin, "minus_10") .side(1)
-    label("minus_9")
-    jmp(pin, "minus_9") .side(0)
-    label("minus_8")
-    jmp(pin, "minus_8") .side(1)
-    label("minus_7")
-    jmp(pin, "minus_7") .side(0)
-    label("minus_6")
-    jmp(pin, "minus_6") .side(1)
-    label("minus_5")
-    jmp(pin, "minus_5") .side(0)
-    label("minus_4")
-    jmp(pin, "minus_4") .side(1)
-    label("minus_3")                    # latest seen
-    jmp(pin, "minus_3") .side(0)
-    label("minus_2")
-    jmp(pin, "minus_2") .side(1)
-    label("minus_1")
-    jmp(pin, "minus_1") .side(0)
-    label("zero")                 
-    jmp(pin, "zero")    .side(1)        # address = 'top'
+    label("phase_0")
+    jmp(pin, "phase_0") .side(0)        # earliest seen = 'top-9'
+    label("phase_1")
+    jmp(pin, "phase_1") .side(1)
+    label("phase_2")
+    jmp(pin, "phase_2") .side(0)
+    label("phase_3")
+    jmp(pin, "phase_3") .side(1)
+    label("phase_4")
+    jmp(pin, "phase_4") .side(0)
+    label("phase_5")
+    jmp(pin, "phase_5") .side(1)
+    label("phase_6")
+    jmp(pin, "phase_6") .side(0)
+    label("phase_7")
+    jmp(pin, "phase_7") .side(1)
+    label("phase_8")
+    jmp(pin, "phase_8") .side(0)
+    label("phase_9")
+    jmp(pin, "phase_9") .side(1)        # latest seen = 'top'
 
     wrap()
 
@@ -269,14 +254,15 @@ def precision_handler(r0):
     mov     (r3, 0x17)          # DEBUG: this is SM-1 address 'top'
     '''
 
-    sub     (r3, r3, 7)
-    sub     (r3, r3, 7)
+    sub     (r3, r3, 5)
+    sub     (r3, r3, 5)
     ldr     (r0, [r1, 8])       # value from 0x502000ec=SM1_ADDR into r0
     sub     (r0, r0, r3)
 
-    cmp     (r0, 12)            # safety check, should be < 12
-    blt     (phase_ok)
-    b       (abort)
+    cmp     (r0, 10)            # safety check, should be <= 10
+    bgt     (abort)
+    cmp     (r0, 0)             # safety check, should be > 0
+    ble     (abort)
 
     label(phase_ok)
     mov     (r3, 1)
@@ -350,6 +336,9 @@ def precision_handler(r0):
     label   (write)
 
     data    (2, 0x4487)         # add(r15, r15, r0)
+    nop     ()                  # never hit
+
+    nop     ()                  # phase-0
     nop     ()
     nop     ()
     nop     ()
@@ -358,9 +347,8 @@ def precision_handler(r0):
     nop     ()
     nop     ()
     nop     ()
-    nop     ()
-    nop     ()
-    nop     ()
+    nop     ()                  # phase-9
+
     str     (r4, [r3, 0])       # Trig-1: Reset SM4's DivClock and start it
     #str     (r6, [r5, 0])       # Trig-2: Reset SM11/10/9/8 and start them
 
@@ -409,6 +397,9 @@ if __name__ == "__main__":
     irig_sm.append(rp2.StateMachine(0, precision_12k, freq=int(cpu_freq / 10), \
                             set_base=Pin(4)))
 
+    # DEBUG - deliberately cause SM-1 and SM-0 wildly different sync's
+    utime.sleep(random())
+
     if trigger_rising:
         irig_sm.append(rp2.StateMachine(1, start_from_pin_rising, freq=cpu_freq, \
                             set_base=Pin(7), sideset_base=Pin(7),\
@@ -438,8 +429,8 @@ if __name__ == "__main__":
     #irig_sm[0].irq(handler=mp_irq_handler, hard=True)
     utime.sleep(0.1)
 
-    # reset Dividers for SM-1 and SM-0
-    mem32[0x50200000] = 0x00000300
+    # reset Dividers for SM-1 and SM-0 - although not strictly needed
+    #mem32[0x50200000] = 0x00000300
 
     # loop, waiting for a successful trigger
     while True:
