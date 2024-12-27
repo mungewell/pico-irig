@@ -33,20 +33,21 @@ ret = 0
 @rp2.asm_pio(set_init=[rp2.PIO.OUT_LOW])
 
 def precision_12k():
-    wrap_target()                   # loop length = 1000 SM-clks @ 12MHz
-
-    irq(4)
+    wrap_target()                   # loop length = '1000-1' SM-clks @ 12MHz
 
     set(x, 29)                      # some thing 'weird' about detecting 1st address
-    set(y, 26)                      # probably with the way 'wrap()' works...
+    set(y, 26)                      # probably with the way '[]' or 'wrap()' works...
 
     set(pins, 0)                    # note: address = 'base+2'
-    irq(block, 4)                   # Wait for Sync'ed start
+    wait(1, irq, 4)					# Wait for Sync'ed start
                                     # --
                                     # triggered...
-    set(pins, 1) [6]
+    set(pins, 1) [5]
+    '''
+    set(pins, 1) [4]                # make 10 CPU cycles earlier
+    '''
     label("before")                 
-    jmp(x_dec, "before") [22]       # 30 * 23 = 690, + 7 = 697
+    jmp(x_dec, "before") [22]       # 30 * 23 = 690, + 6 = 696
                                     # ~= 58 us
                                     # --
     irq(rel(0)) 				    # set IRQ to trigger handler
@@ -62,20 +63,21 @@ def precision_12k():
 @rp2.asm_pio(set_init=[rp2.PIO.OUT_LOW])
 
 def precision_12ka():
-    wrap_target()                   # loop length = 1000 SM-clks @ 12MHz
-
-    irq(4)
+    wrap_target()                   # loop length = '1000-1' SM-clks @ 12MHz
 
     set(x, 26)                      # some thing 'weird' about detecting 1st address
     set(y, 29)                      # probably with the way 'wrap()' works...
 
     set(pins, 0)                    # note: address = 'base+2'
-    irq(block, 4)                   # Wait for Sync'ed start
+    wait(0, irq, 4)					# Wait for Sync'ed start
                                     # --
                                     # triggered...
-    set(pins, 1) [9]
+    set(pins, 1) [8]
+    '''
+    set(pins, 1) [7]
+    '''
     label("before")                 
-    jmp(x_dec, "before") [21]       # 27 * 22 = 594, + 10 = 604
+    jmp(x_dec, "before") [21]       # 27 * 22 = 594, + 9 = 603
                                     # ~= 50 us
                                     # --
     irq(rel(0)) 				    # set IRQ to trigger handler
@@ -91,20 +93,21 @@ def precision_12ka():
 @rp2.asm_pio(set_init=[rp2.PIO.OUT_LOW])
 
 def precision_12kb():
-    wrap_target()                   # loop length = 1000 SM-clks @ 12MHz
-
-    irq(4)
+    wrap_target()                   # loop length = '1000-1' SM-clks @ 12MHz
 
     set(x, 30)                      # Note: some thing 'weird' about detecting/using
     set(y, 30)                      # 1st address probably with the way 'wrap()' works...
 
     set(pins, 0)                    # note: address = 'base+2'
-    irq(block, 4)                   # Wait for Sync'ed start
+    wait(0, irq, 4)					# Wait for Sync'ed start
                                     # --
                                     # triggered...
+    set(pins, 1)
+    '''
     set(pins, 1) [1]
+    '''
     label("before")                 
-    jmp(x_dec, "before") [12]       # 31 * 13 = 403, + 2 = 405
+    jmp(x_dec, "before") [12]       # 31 * 13 = 403, + 1 = 404
                                     # ~= 33 us
                                     # --
     irq(rel(0)) 				    # set IRQ to trigger handler
@@ -119,13 +122,14 @@ def precision_12kb():
 @rp2.asm_pio(set_init=[rp2.PIO.OUT_LOW], sideset_init=[rp2.PIO.OUT_LOW])
 
 def start_from_pin_rising():
+    irq(clear, 4)
     wrap_target()
 
     wait(0, pin, 0) .side(0)
     wait(1, pin, 0)
 
-    irq(clear, 4) .side(1) [3]          # Trigger SM-0
-    irq(rel(0))
+    irq(4) .side(1) [5]                 # Trigger SM-0
+    irq(rel(0)) [7]
 
     # will stick at this 'address' depending
     # on when exactly the Sync occurs
@@ -159,13 +163,14 @@ def start_from_pin_rising():
 # sideset pin is only for debug, it is not needed for operation
 
 def start_from_pin_falling():
+    irq(clear, 4)
     wrap_target()
 
     wait(1, pin, 0) .side(0)
     wait(0, pin, 0)
 
-    irq(clear, 4) .side(1) [3]          # Trigger SM-0
-    irq(rel(0))
+    irq(4) .side(1) [5]                 # Trigger SM-0
+    irq(rel(0)) [7]
 
     # will stick at this 'address' depending
     # on when exactly the Sync occurs
@@ -220,7 +225,7 @@ def precision_handler(r0):
     data    (4, 0x50300000)     #  0x08 - Bank 2 - CTRL Register
     data    (4, 0x00000101)     #  0x0C - Align Dividers for SM4 and Enable SM4
 
-    # trigger 2 - optional
+    # trigger 2 - optional, requires code changes...
     data    (4, 0x50400000)     #  0x10 - Bank 3 - CTRL Register - ie RP2350 only
     data    (4, 0x00000F0F)     #  0x14 - Align Dividers for all and Enable SM11/10/9/8
 
@@ -278,13 +283,13 @@ def precision_handler(r0):
     and_    (r5, r3)            # computed SM-0 address 'base'
     add     (r5, r5, 1)
     '''
-    mov     (r5, 0x18)          # DEBUG: this is SM-0 address 'base+1'
+    mov     (r5, 0x19)          # DEBUG: this is SM-0 address 'base+1'
     '''
 
     # did we enter IRQ handler too late?
     add     (r6, r5, 6)
     '''
-    mov     (r6, 0x1e)          # DEBUG: this is SM-0 address 'base+7'
+    mov     (r6, 0x1f)          # DEBUG: this is SM-0 address 'base+7'
     '''
 
     ldr     (r2, [r1, 8])       # value from 0x502000d4=SM0_ADDR into r3
@@ -322,12 +327,22 @@ def precision_handler(r0):
     # pre-load trigger 1 values
     ldr     (r3, [r7, 0x08])    # loads 0x50300000 into r3
     ldr     (r4, [r7, 0x0C])    # loads 0x00000101 into r4
-    # pre-load trigger 2 values
+    nop     ()                  # spare/delay
+    nop     ()                  # spare/delay
+
+    '''
+    # pre-load trigger 2 values, requires additional 10 cycles
+    # note: also need to change loop length in SM-0
     ldr     (r5, [r7, 0x10])    # loads 0x50400000 into r5
     ldr     (r6, [r7, 0x14])    # loads 0x00000F0F into r6
 
-    #nop     ()                  # spare/delay
-    #nop     ()                  # spare/delay
+    nop     ()                  # spare/delay
+    nop     ()                  # spare/delay
+    nop     ()                  # spare/delay
+    nop     ()                  # spare/delay
+    nop     ()                  # spare/delay
+    nop     ()                  # spare/delay
+    '''
 
     # --
     # write correcting SM-0 vs SM-1 'phase' with r0 value
@@ -457,7 +472,7 @@ if __name__ == "__main__":
             mem32[0x50200000] = 0x00000000
             break
 
-        print("try, try again...")#0x%8.8x"% ret)
+        print("try, try again...")#0x%8.8x" % ret)
 
         # stop SM-4 and loop to trigger again
         mem32[0x50300000] = 0x00000000
