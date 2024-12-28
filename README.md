@@ -15,6 +15,8 @@ calibration processes/software.
 For simpler implementations IRIG can be sync'ed with RTC with 1PPS output, the DS3231 
 for example.
 
+![Pico-Irig in action](https://github.com/mungewell/pico-irig/blob/main/docs/pics/pico-irig_in_action.png)
+
 1 - https://github.com/mungewell/pico-timecode
 
 # how it works
