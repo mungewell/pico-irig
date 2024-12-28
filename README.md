@@ -37,9 +37,13 @@ The four parts are:
 We ultimately want the output to be synchronised with another clock, for this we 
 use the 1PPS input.
 
-This 1PPS input is used to trigger the other state machine to start from 
+~~This 1PPS input is used to trigger the other state machine to start from 
 a know point in code at the correct time, via them waiting with `irq(block, 4)`
-and the synchroniser clearing the interrupt at the right time with `irq(clear, 4)`.
+and the synchroniser clearing the interrupt at the right time with `irq(clear, 4)`.~~
+
+We now have a 'precision trigger' scheme, which is too complicated to explain here,
+it's written up [here](https://github.com/mungewell/pico-irig/blob/main/docs/precision_trigger.md).
+This gives us a trigger accuracy of ~ +/-10ns.
 
 _The Synchroniser is 'one and done', but I may let it continue to run so that
 the timing of the interrupts can be monitored by the CPU._
