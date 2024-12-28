@@ -41,7 +41,7 @@ The State Machines do not have a way to start another, they can only use `wait` 
 which are timing dependant on the clock rate. The ISR code runs at SysClock rate and is the
 most precise way to start a State Machine (that has previsely been loaded).
 
-We need to 'bridge' the CPU clock and State Machine clock(s) ensuring that the CPU is exactely
+We need to 'bridge' the CPU clock and State Machine clock(s) ensuring that the CPU is exactly
 aligned. We do this by monitoring the instruction counter for the SM-0 State Machine.
 
 Since this is clocked at 12MHz (SysClock / 10), and we need a few instructions to read the SM
@@ -65,7 +65,7 @@ aligned to the SM-0 clock.
 Once aligned, we can confidently enable the final State Machine(s) at **precisely** the correct
 time. Well almost... 
 
-# The icing on the cake
+## The icing on the cake
 
 SM-0 is clocked at 'SysClock / 10' and can be (randomly) *up-to* 83ns delayed. So we use 
 another trick; once SM-0 is triggered, it asserts a GPIO and this is 'read back' into SM-1.
@@ -104,3 +104,14 @@ Since the 1PPS trigger is **Asynchronous**, a tiny/immeasurable change can mean 
 not seen until the next cycle - hence a 8.3ns delta. *I am not sure why there is a sub-cycle
 difference, maybe something to do with double-clocked input and/or slight differences in the
 CPU clock?*
+
+## Re-Use
+
+I hope that this scheme would be useful to others, the code is MIT License so please feel
+free to take and reuse...
+
+There's a reference test script which would be a good (cleaner) implementation:
+
+[precision.py](https://github.com/mungewell/pico-irig/blob/main/test_scripts/sync/precision.py)
+
+
