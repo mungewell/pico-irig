@@ -431,6 +431,7 @@ if __name__ == "__main__":
     print("SM-0")
     print("Top 0x%8.8x" % ((mem32[0x502000cc] >> 12) & 0x1f))
     print("Bot 0x%8.8x" % ((mem32[0x502000cc] >> 7) & 0x1f))
+    print("Current Instruction 0x%8.8x" % (mem32[0x502000d8] & 0xffff))
     print()
 
     print("SM-1")
@@ -442,6 +443,11 @@ if __name__ == "__main__":
     # enable the IRQ handler
     irig_sm[0].irq(handler=precision_handler, hard=True)
     #irig_sm[0].irq(handler=mp_irq_handler, hard=True)
+    utime.sleep(0.1)
+
+    # 'dry fire' the interrupt, so that the ISR is compiled/loaded by uPython
+    # ISR will abort as SM-0 address is too low - ie loop condition not met
+    mem32[0x502000d8] = 0xc010          # 'irq(rel(0))'
     utime.sleep(0.1)
 
     # reset Dividers for SM-1 and SM-0 - although not strictly needed
