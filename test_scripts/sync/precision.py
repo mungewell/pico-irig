@@ -24,7 +24,7 @@ from libs.ds3231 import DS3231
 
 # globals used in example 'main()'
 trigger_rising = False
-trigger_rtc = True
+trigger_rtc = False
 
 core_dis = [0, 0]
 ret = 0
@@ -455,18 +455,15 @@ if __name__ == "__main__":
 
     # loop, waiting for a successful trigger
     while True:
-        if trigger_rtc:
-            while pps.value() == trigger_rising:
-                # wait for PPS to deassert first, as some are 1Hz signals...
-                utime.sleep(0.1)
-
         # Start SM-0 & SM-1
         mem32[0x50200000] = 0x00000003
 
-        if trigger_rtc:
-            while pps.value() != trigger_rising:
-                # wait for PPS to assert
-                utime.sleep(0.1)
+        if not trigger_rtc:
+            # Start the StateMachines asserting (fake) 1PPS low
+            utime.sleep(0.1)
+            pps = machine.Pin(18, machine.Pin.OUT, value=0)
+            utime.sleep(0.1)
+            pps = machine.Pin(18, machine.Pin.IN, machine.Pin.PULL_UP)
 
         utime.sleep(0.1)
         #print("0x%8.8x" % mem32[0x50200000])
@@ -482,6 +479,7 @@ if __name__ == "__main__":
 
         # stop SM-4 and loop to trigger again
         mem32[0x50300000] = 0x00000000
+        utime.sleep(0.5)
         ret = 0
 
     
