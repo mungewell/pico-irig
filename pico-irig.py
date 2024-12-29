@@ -381,6 +381,7 @@ def precision_handler(r0):
 
     # --
     label   (func_entry)
+    cpsid   (r8)
 
     # checking SM-1 Address (ie Phase)
     ldr     (r1, [r7, 0x04])    # loads 0x502000e4 into r1
@@ -500,8 +501,7 @@ def precision_handler(r0):
 
     # --
     label   (abort)
-
-    #mov     (r0, 0)
+    cpsie   (r8)
 
 
 @micropython.asm_thumb
@@ -718,6 +718,11 @@ if __name__ == "__main__":
     #irig_sm[0].irq(handler=mp_irq_handler, hard=True)
     utime.sleep(0.1)
 
+    # 'dry fire' the interrupt, so that the ISR is compiled/loaded by uPython
+    # ISR will abort as SM-0 address is too low - ie loop condition not met
+    mem32[0x502000d8] = 0xc010          # 'irq(rel(0))'
+    utime.sleep(0.1)
+
     # re-align the clock-phases with CLKDIV_RESTART
     #sync_sm(0x50300000, 0x50200000)          # Block-2 first as more timing critical
 
@@ -744,6 +749,7 @@ if __name__ == "__main__":
     while True:
         if irig_trigger == IRIG_FAKE:
             # Start the StateMachines asserting (fake) 1PPS low
+            utime.sleep(0.1)
             pps = machine.Pin(18, machine.Pin.OUT, value=0)
             utime.sleep(0.1)
             pps = machine.Pin(18, machine.Pin.IN, machine.Pin.PULL_UP)
@@ -757,6 +763,7 @@ if __name__ == "__main__":
             break
 
         #print("try, try again...")#0x%8.8x" % ret)
+        utime.sleep(0.5)
 
         # stop SM-4 and loop to trigger again
         #mem32[0x50300000] = 0x00000000
