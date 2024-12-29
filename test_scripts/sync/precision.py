@@ -247,6 +247,7 @@ def precision_handler(r0):
 
     # --
     label   (func_entry)
+    cpsid   (r8)
 
     # checking SM-1 Address (ie Phase)
     ldr     (r1, [r7, 0x04])    # loads 0x502000e4 into r1
@@ -369,8 +370,7 @@ def precision_handler(r0):
 
     # --
     label   (abort)
-
-    #mov     (r0, 0)
+    cpsie   (r8)
 
 
 def mp_irq_handler(m):
