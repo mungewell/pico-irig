@@ -455,6 +455,11 @@ if __name__ == "__main__":
 
     # loop, waiting for a successful trigger
     while True:
+        if trigger_rtc:
+            while pps.value() == trigger_rising:
+                # wait for PPS to deassert first, as some are 1Hz signals...
+                utime.sleep(0.1)
+
         # Start SM-0 & SM-1
         mem32[0x50200000] = 0x00000003
 
@@ -464,6 +469,11 @@ if __name__ == "__main__":
             pps = machine.Pin(18, machine.Pin.OUT, value=0)
             utime.sleep(0.1)
             pps = machine.Pin(18, machine.Pin.IN, machine.Pin.PULL_UP)
+        else:
+            # Wait for when trigger should have occurred
+            while pps.value() != trigger_rising:
+                # wait for PPS to deassert first, as some are 1Hz signals...
+                utime.sleep(0.1)
 
         utime.sleep(0.1)
         #print("0x%8.8x" % mem32[0x50200000])
