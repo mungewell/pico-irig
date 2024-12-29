@@ -69,7 +69,7 @@ def precision_12ka():
     set(y, 29)                      # probably with the way 'wrap()' works...
 
     set(pins, 0)                    # note: address = 'base+2'
-    wait(0, irq, 4)					# Wait for Sync'ed start
+    wait(1, irq, 4)					# Wait for Sync'ed start
                                     # --
                                     # triggered...
     set(pins, 1) [8]
@@ -99,7 +99,7 @@ def precision_12kb():
     set(y, 30)                      # 1st address probably with the way 'wrap()' works...
 
     set(pins, 0)                    # note: address = 'base+2'
-    wait(0, irq, 4)					# Wait for Sync'ed start
+    wait(1, irq, 4)					# Wait for Sync'ed start
                                     # --
                                     # triggered...
     set(pins, 1)
