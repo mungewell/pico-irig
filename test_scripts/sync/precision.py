@@ -32,6 +32,50 @@ ret = 0
 trigger_ticks_us = 0
 regen_ticks_us = 0
 
+#---------------------------------------------
+# Class for performing rolling averages
+
+class Rolling:
+    def __init__(self, size=5):
+        self.max = size
+        self.data = []
+        for i in range(size):
+            self.data.append([0.0, 0])
+
+        self.dsum = 0.0
+
+        self.enter = 0
+        self.exit = 0
+        self.size = 0
+
+    def store(self, data, mark=0):
+        if self.size == self.max:
+            self.dsum -= self.data[self.exit][0]
+            self.exit = (self.exit + 1) % self.max
+
+        self.data[self.enter][0] = data
+        self.data[self.enter][1] = mark
+        self.dsum += data
+
+        self.enter = (self.enter + 1) % self.max
+        if self.size < self.max:
+            self.size += 1
+
+    def read(self):
+        if self.size > 0:
+            return(self.dsum/self.size)
+
+    def store_read(self, data, mark=0):
+        self.store(data, mark)
+        return(self.read())
+
+    def purge(self, mark):
+        while self.size and self.data[self.exit][1] < mark:
+            self.dsum -= self.data[self.exit][0]
+            self.data[self.exit][0] = None
+            self.exit = (self.exit + 1) % self.max
+            self.size -= 1
+
 # ---
 @rp2.asm_pio(set_init=[rp2.PIO.OUT_LOW])
 
@@ -531,19 +575,26 @@ if __name__ == "__main__":
         utime.sleep(0.5)
         ret = 0
 
+    trigger = Rolling(100)
+    regen = Rolling(100)
+
     last_trigger_ticks = 0
     last_regen_ticks = 0
     while True:
         # Debug - print approximate time of trigger(s),
         # takes random/varying time to enter ISR
         if last_trigger_ticks != trigger_ticks_us:
-            print("Trigger: %d us" % \
-                    utime.ticks_diff(trigger_ticks_us, last_trigger_ticks))
+            if last_trigger_ticks:
+                delta = utime.ticks_diff(trigger_ticks_us, last_trigger_ticks)
+                print("Trigger: %d us (avg %f us)" % \
+                        (delta, trigger.store_read(delta)))
             last_trigger_ticks = trigger_ticks_us
 
         if last_regen_ticks != regen_ticks_us:
-            print("Regen: %d us" % \
-                    utime.ticks_diff(regen_ticks_us, last_regen_ticks))
+            if last_regen_ticks:
+                delta = utime.ticks_diff(regen_ticks_us, last_regen_ticks)
+                print("Regen: %d us (avg %f us)" % \
+                        (delta, regen.store_read(delta)))
             last_regen_ticks = regen_ticks_us
 
         # loop forever
