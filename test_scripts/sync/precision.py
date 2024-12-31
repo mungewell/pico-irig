@@ -29,6 +29,9 @@ trigger_rtc = False
 core_dis = [0, 0]
 ret = 0
 
+trigger_ticks_us = 0
+regen_ticks_us = 0
+
 # ---
 @rp2.asm_pio(set_init=[rp2.PIO.OUT_LOW])
 
@@ -206,6 +209,33 @@ def toggle_pin():
     mov(pins, invert(pins))
     wrap()
 
+
+@rp2.asm_pio(set_init=[rp2.PIO.OUT_LOW], out_init=[rp2.PIO.OUT_LOW])
+
+def regen_1hz():
+    wrap_target()                   # loop length 12000 clocks @ 12KHz
+    set(pins, 1)                    # note: first cycle is short by one period
+
+    set(x, 27) [5]
+    label("outer_h")
+    set(y, 19)
+    label("inner_h")
+    jmp(y_dec, "inner_h") [9]       # 20 * 10 = 200
+    jmp(x_dec, "outer_h") [12]      # 28 * (200+14)=5992, +1 +6 = 5999
+                                    # --
+    set(pins, 0)
+    irq(rel(0))                     # trigger 'anti phase' to real 1PPS
+                                    # note: 83us later than it should be
+    set(x, 27) [5]
+    label("outer_l")
+    set(y, 19)
+    label("inner_l")
+    jmp(y_dec, "inner_l") [9]       # 20 * 10 = 200
+    jmp(x_dec, "outer_l") [12]      # 28 * (200+14)=5992, +1+1 +6 = 6000
+                                    # --
+    set(pins, 1)                    # +1 makes 6000...
+    wrap()
+
 # ---
 
 @micropython.asm_thumb
@@ -374,17 +404,22 @@ def precision_handler(r0):
 
 
 def mp_irq_handler(m):
-    global core_dis, ret
+    global core_dis, irig_sm, ret
+    global trigger_ticks_us, regen_ticks_us
     
-    #core_dis[mem32[0xd0000000]] = disable_irq()
+    core_dis[mem32[0xd0000000]] = disable_irq()
+    ticks = utime.ticks_us()
 
-    '''
-    # reset the clock-phases with CLKDIV_RESTART
-    mem32[0x50200000] = 0x00000407
-    '''
-    ret = precision_handler(0)
-    
-    #enable_irq(core_dis[mem32[0xd0000000]])
+    if m==irig_sm[0]:
+        ret = precision_handler(0)
+
+    if m==irig_sm[1]:
+        trigger_ticks_us = ticks
+
+    if m==irig_sm[2]:
+        regen_ticks_us = ticks
+
+    enable_irq(core_dis[mem32[0xd0000000]])
 
 #---------------------------------------------
 
@@ -424,7 +459,7 @@ if __name__ == "__main__":
                             set_base=Pin(7), sideset_base=Pin(7),\
                             in_base=Pin(18), jmp_pin=Pin(4)))
 
-    irig_sm.append(rp2.StateMachine(4, toggle_pin, freq=12_000, \
+    irig_sm.append(rp2.StateMachine(4, regen_1hz, freq=12_000, \
                             set_base=Pin(6), in_base=Pin(6), out_base=Pin(6)))
 
     '''
@@ -481,8 +516,12 @@ if __name__ == "__main__":
         if (mem32[0x50300000] & (1 << 0)):
             print("SM-4 has started")#, ret =", ret)
 
-            # Stop SM-0 & SM-1
-            mem32[0x50200000] = 0x00000000
+            # Stop SM-0
+            mem32[0x50200000] = 0x00000002
+
+            # Enable IRQs to track 1PPS timing
+            irig_sm[1].irq(handler=mp_irq_handler, hard=True)
+            irig_sm[2].irq(handler=mp_irq_handler, hard=True)
             break
 
         print("try, try again...")#0x%8.8x" % ret)
@@ -492,8 +531,21 @@ if __name__ == "__main__":
         utime.sleep(0.5)
         ret = 0
 
-    
+    last_trigger_ticks = 0
+    last_regen_ticks = 0
     while True:
+        # Debug - print approximate time of trigger(s),
+        # takes random/varying time to enter ISR
+        if last_trigger_ticks != trigger_ticks_us:
+            print("Trigger: %d us" % \
+                    utime.ticks_diff(trigger_ticks_us, last_trigger_ticks))
+            last_trigger_ticks = trigger_ticks_us
+
+        if last_regen_ticks != regen_ticks_us:
+            print("Regen: %d us" % \
+                    utime.ticks_diff(regen_ticks_us, last_regen_ticks))
+            last_regen_ticks = regen_ticks_us
+
         # loop forever
-        utime.sleep(0.5)
+        utime.sleep(0.1)
 
